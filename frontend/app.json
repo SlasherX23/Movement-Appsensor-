@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "frontend",
+    "name": "MotionAlert",
     "slug": "frontend",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,14 +9,23 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.emergent.movesense.wrmo2j",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Detect motion in your camera view",
+        "NSMicrophoneUsageDescription": "Not used, required by camera module"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.emergent.movesense.wrmo2j",
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -32,6 +41,13 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#000000"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "MotionAlert uses the camera to detect movement.",
+          "recordAudioAndroid": false
         }
       ]
     ],
