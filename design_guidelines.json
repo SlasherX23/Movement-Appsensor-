@@ -1,0 +1,118 @@
+{
+  "app_name": "MotionAlert HUD",
+  "personality": "7 Dark-First Utility DARK",
+  "personality_one_liner": "A sharp, tactical surveillance interface designed for instant response, high contrast, and uninterrupted monitoring.",
+  "color": {
+    "surface": "#09090B",
+    "onSurface": "#FAFAFA",
+    "surfaceSecondary": "#18181B",
+    "onSurfaceSecondary": "#E4E4E7",
+    "surfaceTertiary": "#27272A",
+    "onSurfaceTertiary": "#D4D4D8",
+    "surfaceInverse": "#FAFAFA",
+    "onSurfaceInverse": "#09090B",
+    "brand": "#EF4444",
+    "brandPrimary": "#DC2626",
+    "onBrandPrimary": "#FFFFFF",
+    "brandSecondary": "#F87171",
+    "onBrandSecondary": "#450A0A",
+    "brandTertiary": "#450A0A",
+    "onBrandTertiary": "#FECACA",
+    "success": "#22C55E",
+    "onSuccess": "#052E16",
+    "warning": "#F59E0B",
+    "onWarning": "#451A03",
+    "error": "#DC2626",
+    "onError": "#FFFFFF",
+    "info": "#FAFAFA",
+    "onInfo": "#09090B",
+    "border": "#3F3F46",
+    "borderStrong": "#52525B",
+    "divider": "#27272A"
+  },
+  "typography": {
+    "displayFontFamily": "Rajdhani",
+    "textFontFamily": "IBMPlexSans",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Dense and tactical. Keep HUD elements out of the center frame. Maintain generous safe-area padding.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": 0,
+  "navigation": "stack_only",
+  "icon_set": "Phosphor",
+  "glassmorphism": {
+    "enabled": false,
+    "do's": [],
+    "dont's": [
+      "No heavy blurs that drop performance on camera feeds. Use solid translucent panels (e.g., surfaceSecondary at 85% opacity) or dark linear gradients."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "LiveFeed",
+      "purpose": "Full-screen tactical view of the camera with floating HUD for motion tracking and voice alert toggles.",
+      "states": {
+        "loading": "Centered loading spinner with 'INITIALIZING OPTICS...' in mono font.",
+        "empty": "Camera permission denied state showing an abstract tech background with a prompt to enable access.",
+        "error": "Failed to load camera feed. Red error boundary with retry button."
+      },
+      "layout": "Layer 0: AbsoluteFill `CameraView`. Layer 1: Top/Bottom dark linear gradients (scrims) to guarantee text readability. Layer 2: Safe-area HUD. Top center: Status pill ('MONITORING' vs 'MOTION DETECTED'). Center: Reticle crosshairs `[ + ]`. Bottom container: Stack containing 'Sensitivity' label, Slider component, and bottom row with a pulsing TTS speaker icon on the left, and a large central Start/Stop toggle button."
+    }
+  ],
+  "images": {
+    "permission_bg": {
+      "url": "https://images.unsplash.com/photo-1532190872407-280735d27e08?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwxfHxkYXJrJTIwYWJzdHJhY3QlMjB0ZWNoJTIwZ2VvbWV0cmljJTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3ODQwODYyNDN8MA&ixlib=rb-4.1.0&q=85",
+      "dark": "https://images.unsplash.com/photo-1532190872407-280735d27e08?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwxfHxkYXJrJTIwYWJzdHJhY3QlMjB0ZWNoJTIwZ2VvbWV0cmljJTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3ODQwODYyNDN8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Dark abstract geometric tech background"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Design the interface as a 'Dark-First Utility' tactical HUD. The camera feed must be absolute full screen under all UI.",
+    "Place a vertical top-to-bottom dark gradient scrim at the top edge, and a bottom-to-top gradient scrim at the bottom edge. These are required to ensure the floating white text and controls are always readable regardless of what the camera is pointing at.",
+    "Status Pill: Placed at the top center. Idle state: transparent with an outline. Alert state: brandTertiary background, brandPrimary border, text colored onBrandTertiary, with a pulsing red dot.",
+    "Reticle: Draw subtle framing crosshairs or corner brackets `[ ]` in the center of the screen to give it a surveillance feel. Turn them red when motion is detected.",
+    "TTS Indicator: Include a speaker icon in the bottom HUD that animates (e.g., sound waves appearing/scaling) strictly when motion is detected and the TTS is 'speaking'.",
+    "Use solid translucent colors (e.g. `rgba(24, 24, 27, 0.85)` for `surfaceSecondary`) for the bottom control panel instead of expensive blur effects, prioritizing camera performance.",
+    "For the sensitivity slider, build a custom row with a track and a thumb. Display the current percentage next to it using a monospace/tabular numbers font variant for stable width.",
+    "Permission Empty State: Use the provided `permission_bg` image with a dark gradient scrim (Layer 1) and place the text/buttons (Layer 2) on the bottom 40% of the screen. Text uses `onSurface` for perfect contrast.",
+    "Strictly avoid any blue, purple, or indigo hues anywhere in the app. Info alerts should just use white/grey. The primary accent is Signal Red."
+  ],
+  "haptics": {
+    "slider_drag": "selection",
+    "start_monitoring": "impactMedium",
+    "stop_monitoring": "impactLight",
+    "motion_detected_alert": "notificationWarning"
+  }
+}
