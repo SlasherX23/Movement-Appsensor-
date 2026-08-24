@@ -16,14 +16,24 @@ Anyone who wants an ad-hoc security/motion-alert utility - travelers, parents, r
    - Compute mean absolute per-pixel difference vs previous frame
    - Threshold derived from sensitivity slider (0-100 -> 30..3)
 4. **Sensitivity Slider** (0-100%) - default 60%, live-adjustable
-5. **Voice Notification (TTS)** - `expo-speech.speak("Motion detected")` throttled to once every 4s
-6. **HUD Elements**
+5. **Claude Sonnet 5 Vision Analysis** (NEW)
+   - On motion trigger, capture a 384x384 snapshot
+   - Send to backend `POST /api/analyze-motion` (base64 JPEG)
+   - Backend uses `emergentintegrations` + `EMERGENT_LLM_KEY` to call `claude-sonnet-5` with vision
+   - Returns `{ classification: person|pet|vehicle|other, description, spoken_alert }`
+   - Description is spoken via TTS instead of generic "Motion detected"
+   - Classification badge shown in HUD (with icon: person / paw / car / help-circle)
+   - Description shown in bottom hint text
+   - Cooldown of 4.5s between analyses to control cost & TTS overlap
+6. **Voice Notification (TTS)** - `expo-speech.speak(spoken_alert)` throttled
+7. **HUD Elements**
    - Status pill: STANDBY / MONITORING / MOTION DETECTED (pulsing red dot)
+   - Classification badge (person/pet/vehicle/other) with ANALYZING… spinner
    - Reticle crosshairs + corner brackets (turn red on motion)
    - TTS indicator icon (animated on speak)
    - Start / Stop toggle button
-7. **Haptics** - selection on slider, medium on start, light on stop, warning on motion
-8. **App Backgrounding** - monitoring auto-stops when app goes background
+8. **Haptics** - selection on slider, medium on start, light on stop, warning on motion
+9. **App Backgrounding** - monitoring auto-stops when app goes background
 
 ## Non-Goals (MVP)
 - No history/event log

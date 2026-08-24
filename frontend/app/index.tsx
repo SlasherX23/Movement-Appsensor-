@@ -50,8 +50,11 @@ const C = {
 };
 
 const CAPTURE_INTERVAL_MS = 600;
-const TTS_COOLDOWN_MS = 4000;
+const TTS_COOLDOWN_MS = 4500;
 const FRAME_SIZE = 48; // downscale to 48x48 for pixel diff
+const ANALYZE_SIZE_W = 384; // snapshot width sent to Claude
+const ANALYZE_SIZE_H = 384;
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 // Map slider (0..100) to diff threshold (higher slider = lower threshold = more sensitive)
 function sensitivityToThreshold(s: number): number {
@@ -68,6 +71,11 @@ export default function Index() {
   const [sensitivity, setSensitivity] = useState(60);
   const [ttsSpeaking, setTtsSpeaking] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [classification, setClassification] = useState<
+    "person" | "pet" | "vehicle" | "other" | null
+  >(null);
+  const [lastDescription, setLastDescription] = useState<string>("");
 
   const cameraRef = useRef<CameraView | null>(null);
   const loopRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -214,7 +222,7 @@ export default function Index() {
         // Motion if avg brightness diff crosses threshold OR many pixels changed
         const isMotion = avgDiff > threshold || changedRatio > threshold;
         if (isMotion) {
-          triggerMotion();
+          triggerMotion(pic.uri);
         }
       }
       prevGrayRef.current = gray;
@@ -225,18 +233,48 @@ export default function Index() {
     }
   }, []);
 
-  const triggerMotion = useCallback(() => {
-    setMotionDetected(true);
-    if (motionResetRef.current) clearTimeout(motionResetRef.current);
-    motionResetRef.current = setTimeout(() => setMotionDetected(false), 1500);
+  const analyzeAndSpeak = useCallback(async (uri: string) => {
+    setAnalyzing(true);
+    try {
+      const snap = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: ANALYZE_SIZE_W, height: ANALYZE_SIZE_H } }],
+        {
+          compress: 0.6,
+          format: ImageManipulator.SaveFormat.JPEG,
+          base64: true,
+        }
+      );
+      if (!snap.base64) throw new Error("no snapshot");
 
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(
-      () => {}
-    );
+      const resp = await fetch(`${BACKEND_URL}/api/analyze-motion`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_base64: snap.base64 }),
+      });
+      if (!resp.ok) throw new Error(`http ${resp.status}`);
+      const data = (await resp.json()) as {
+        classification: "person" | "pet" | "vehicle" | "other";
+        description: string;
+        spoken_alert: string;
+      };
 
-    const now = Date.now();
-    if (now - lastTTSRef.current > TTS_COOLDOWN_MS) {
-      lastTTSRef.current = now;
+      setClassification(data.classification);
+      setLastDescription(data.description);
+
+      setTtsSpeaking(true);
+      Speech.stop();
+      Speech.speak(data.spoken_alert || "Motion detected", {
+        rate: 1.0,
+        pitch: 1.0,
+        onDone: () => setTtsSpeaking(false),
+        onStopped: () => setTtsSpeaking(false),
+        onError: () => setTtsSpeaking(false),
+      });
+    } catch {
+      // Fallback: generic voice alert
+      setClassification("other");
+      setLastDescription("Movement observed in the scene.");
       setTtsSpeaking(true);
       Speech.stop();
       Speech.speak("Motion detected", {
@@ -246,8 +284,42 @@ export default function Index() {
         onStopped: () => setTtsSpeaking(false),
         onError: () => setTtsSpeaking(false),
       });
+    } finally {
+      setAnalyzing(false);
     }
   }, []);
+
+  const triggerMotion = useCallback(
+    (uri?: string) => {
+      setMotionDetected(true);
+      if (motionResetRef.current) clearTimeout(motionResetRef.current);
+      motionResetRef.current = setTimeout(() => setMotionDetected(false), 2500);
+
+      Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Warning
+      ).catch(() => {});
+
+      const now = Date.now();
+      if (now - lastTTSRef.current > TTS_COOLDOWN_MS) {
+        lastTTSRef.current = now;
+        if (uri) {
+          // fire-and-forget async analysis + TTS
+          analyzeAndSpeak(uri);
+        } else {
+          setTtsSpeaking(true);
+          Speech.stop();
+          Speech.speak("Motion detected", {
+            rate: 1.0,
+            pitch: 1.0,
+            onDone: () => setTtsSpeaking(false),
+            onStopped: () => setTtsSpeaking(false),
+            onError: () => setTtsSpeaking(false),
+          });
+        }
+      }
+    },
+    [analyzeAndSpeak]
+  );
 
   const runLoop = useCallback(() => {
     if (!isMonitoringRef.current) return;
@@ -272,6 +344,9 @@ export default function Index() {
     isMonitoringRef.current = false;
     setMotionDetected(false);
     setTtsSpeaking(false);
+    setAnalyzing(false);
+    setClassification(null);
+    setLastDescription("");
     if (loopRef.current) {
       clearTimeout(loopRef.current);
       loopRef.current = null;
@@ -447,6 +522,59 @@ export default function Index() {
                 : "STANDBY"}
             </Text>
           </View>
+
+          {classification && (
+            <View
+              testID="classification-badge"
+              style={[
+                styles.classBadge,
+                {
+                  backgroundColor:
+                    classification === "person"
+                      ? "rgba(239,68,68,0.18)"
+                      : "rgba(24,24,27,0.85)",
+                  borderColor:
+                    classification === "person" ? C.brandPrimary : C.border,
+                },
+              ]}
+            >
+              <Ionicons
+                name={
+                  classification === "person"
+                    ? "person"
+                    : classification === "pet"
+                      ? "paw"
+                      : classification === "vehicle"
+                        ? "car"
+                        : "help-circle"
+                }
+                size={12}
+                color={C.onSurface}
+              />
+              <Text style={styles.classBadgeText}>
+                {classification.toUpperCase()}
+              </Text>
+              {analyzing && (
+                <ActivityIndicator
+                  size="small"
+                  color={C.onSurface}
+                  style={{ marginLeft: 4 }}
+                />
+              )}
+            </View>
+          )}
+          {!classification && analyzing && (
+            <View
+              testID="analyzing-badge"
+              style={[
+                styles.classBadge,
+                { backgroundColor: "rgba(24,24,27,0.85)", borderColor: C.border },
+              ]}
+            >
+              <ActivityIndicator size="small" color={C.brand} />
+              <Text style={styles.classBadgeText}>ANALYZING…</Text>
+            </View>
+          )}
         </View>
       </SafeAreaView>
 
@@ -525,8 +653,10 @@ export default function Index() {
 
           <Text style={styles.hint} testID="hint-text">
             {isMonitoring
-              ? "Point camera at area. Voice alert plays through connected earphones or speaker."
-              : "Tap START to begin real-time motion tracking."}
+              ? lastDescription
+                ? `"${lastDescription}"`
+                : "Point camera at area. Voice alert plays through connected earphones or speaker."
+              : "Tap START to begin real-time AI-powered motion tracking."}
           </Text>
         </View>
       </SafeAreaView>
@@ -694,6 +824,23 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 13,
     letterSpacing: 2.5,
+    fontWeight: "800",
+  },
+  classBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignSelf: "center",
+  },
+  classBadgeText: {
+    color: C.onSurface,
+    fontSize: 10,
+    letterSpacing: 2,
     fontWeight: "800",
   },
 
